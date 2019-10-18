@@ -10,14 +10,9 @@ sense.clear()
 speed = 1
 score = 0
 last_cicle = time()
+CRASH = False
 
-# Just return the actions we are interested in
-def wait_for_move():
-  while True:
-    e = sense.stick.wait_for_event()
-    if e.action != ACTION_RELEASED:
-      return e
-      
+
 # Print speed
 def print_speed2():
   temp = sense.get_temperature()
@@ -65,8 +60,8 @@ road = [[2,3],[2,2],[2,1],[2,2],[1,2],[1,2],[1,2],[1,2]]
 
 def road_run():
   clear_road()
-  print_road()
   next_step()
+  print_road()
   #print(road)
   
   
@@ -85,14 +80,13 @@ def next_step():
   road = road[1:]+[generate_step(road[-1])]
   
 def generate_step(s):
-  gen_p = randint(s[0]-s[1]-1,s[0]+s[1]-1)
-  gen_r = randint(1,3)
-  gen_p = 0 if gen_p < 0 else gen_p
-  gen_p = 4 if gen_p > 4 else gen_p
+  global score
+  gen_p = randint(max(0, s[0]-s[1]+1),  min(s[0]+s[1]-1, 4))
+  gen_r = randint(max(s[1]-1, 1) ,  min(s[1]+1, 3))
   returnable = [gen_p  ,gen_r]
-  #print("gen_step: "+str(returnable))
+  score = score + 1
+  print("returnable"+str(returnable))
   return returnable
-  #return [randint(s[0]-s[1]-1,s[0]+s[1]-1),randint(1,3)]
 
 def print_road():
   global player
@@ -117,14 +111,24 @@ def print_road():
         sense.set_pixel(s +1, 7-i, B if step[s] == 0 else [0,0,0])
       if player == [s +1, 7-i] and step[s] == 0:
         sense.set_pixel(s +1, 7-i, Y)
+        crash()
       s = s+1
       
     
-    i = i+1 
+    i = i+1
     
-      
+def wall(s):
+  step = deepcopy(road[s[1]])
+  return x < step[0]-step[1]+1 or x > step[0]+step[1]-1
   
-  
+def crash():
+  global CRASH
+  CRASH = True
+
+def check_if_bueno_nenes(pos):
+  if wall(pos):
+    crash()
+    print("CRASHSSSHSHSHSH")
 
 R = [255, 0, 0]  # red
 Y = [255, 255, 0] # yellow
@@ -142,15 +146,14 @@ y=7
 
 while True:
   
+  if CRASH:
+    break
   print_speed2()
   print_static_walls()
-  #e = wait_for_move()
   check_time()
-  #sleep(8/speed/4)
   
   for e in sense.stick.get_events():
     if e.action != ACTION_RELEASED:
-      #sense.clear()
       if e.direction ==  DIRECTION_UP:
         y = y - 1
         
@@ -162,11 +165,16 @@ while True:
     
       elif e.direction ==  DIRECTION_RIGHT:
         x = x + 1
-      print(x, y, W)
-      sense.set_pixel((x % 7), (y % 8), W)
+        
+      x = x % 7
+      y = y % 8
+      check_if_bueno_nenes([x, y])
+      sense.set_pixel(x, y, W)
       sense.set_pixel(player[0], player[1], [0,0,0])
-      player = [x % 7, y % 8]
-      
+      player = [x, y]
+      if CRASH:
+        break
+
 sense.show_message("Score: " + str(score))
   
   
